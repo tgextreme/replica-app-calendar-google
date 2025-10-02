@@ -62,10 +62,21 @@ class Event {
     }
 
     public function findById($id) {
-        $sql = "SELECT e.*, c.name as calendar_name, c.color as calendar_color,
+        $sql = "SELECT e.*, 
+                       CASE 
+                           WHEN e.calendar_id IS NOT NULL THEN c.name 
+                           WHEN e.group_id IS NOT NULL THEN g.name 
+                       END as container_name,
+                       CASE 
+                           WHEN e.calendar_id IS NOT NULL THEN c.color 
+                           WHEN e.group_id IS NOT NULL THEN '#6c757d'
+                       END as container_color,
+                       c.name as calendar_name, c.color as calendar_color,
+                       g.name as group_name,
                        u1.full_name as created_by_name, u2.full_name as updated_by_name
                 FROM events e 
-                JOIN calendars c ON e.calendar_id = c.id
+                LEFT JOIN calendars c ON e.calendar_id = c.id
+                LEFT JOIN user_groups g ON e.group_id = g.id
                 LEFT JOIN users u1 ON e.created_by = u1.id
                 LEFT JOIN users u2 ON e.updated_by = u2.id
                 WHERE e.id = ?";

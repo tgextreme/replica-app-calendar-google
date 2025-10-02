@@ -107,7 +107,7 @@ class CalendarApp {
             const start = fetchInfo.start.toISOString().split('T')[0];
             const end = fetchInfo.end.toISOString().split('T')[0];
             
-            const response = await axios.get(`/calendar/api/event?start=${start}&end=${end}`);
+            const response = await axios.get(`/calendar/api/events?start=${start}&end=${end}`);
             
             if (response.data.success) {
                 successCallback(response.data.events);
@@ -205,7 +205,7 @@ class CalendarApp {
                 allDay: event.allDay
             };
 
-            const response = await axios.put(`/calendar/api/event/${event.id}`, eventData);
+            const response = await axios.put(`/calendar/api/events/${event.id}`, eventData);
             
             if (!response.data.success) {
                 // Revertir cambios si hay error
@@ -295,9 +295,9 @@ class CalendarApp {
         try {
             let response;
             if (eventId) {
-                response = await axios.put(`/calendar/api/event/${eventId}`, eventData);
+                response = await axios.put(`/calendar/api/events/${eventId}`, eventData);
             } else {
-                response = await axios.post('/calendar/api/event', eventData);
+                response = await axios.post('/calendar/api/events', eventData);
             }
 
             if (response.data.success) {
@@ -320,7 +320,7 @@ class CalendarApp {
         
         if (confirm('¿Estás seguro de que quieres eliminar este evento?')) {
             try {
-                const response = await axios.delete(`/calendar/api/event/${eventId}`);
+                const response = await axios.delete(`/calendar/api/events/${eventId}`);
                 
                 if (response.data.success) {
                     this.showAlert('success', 'Evento eliminado');
