@@ -280,5 +280,4 @@ Para reportar bugs o solicitar funcionalidades:
 2. Crear rama para nueva funcionalidad
 3. Commit de cambios
 4. Push a la rama
-5. Abrir Pull Request#   r e p l i c a - a p p - c a l e n d a r - g o o g l e  
- 
+5. Abrir Pull Request
