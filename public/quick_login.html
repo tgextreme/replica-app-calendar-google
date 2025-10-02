@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Login - Calendar Test</title>
+</head>
+<body>
+    <h2>Quick Login</h2>
+    <div id="status">Ready to login...</div>
+    
+    <button onclick="doLogin()">Login as Admin</button>
+    <button onclick="testCalendar()">Test Calendar API</button>
+    
+    <br><br>
+    <label>Calendar Dropdown:</label>
+    <select id="calendarSelect">
+        <option>Not loaded</option>
+    </select>
+    
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+    axios.defaults.withCredentials = true;
+    
+    async function doLogin() {
+        const status = document.getElementById('status');
+        
+        try {
+            status.textContent = 'Logging in...';
+            
+            const response = await axios.post('/calendar/api/auth/login', {
+                email: 'admin@calendario.local',
+                password: 'passwd12345@'
+            });
+            
+            if (response.data.success) {
+                status.textContent = 'Login successful! User: ' + response.data.user.full_name;
+            } else {
+                status.textContent = 'Login failed: ' + response.data.message;
+            }
+        } catch (error) {
+            status.textContent = 'Error: ' + error.message;
+            if (error.response) {
+                status.textContent += ' - ' + JSON.stringify(error.response.data);
+            }
+        }
+    }
+    
+    async function testCalendar() {
+        const status = document.getElementById('status');
+        const select = document.getElementById('calendarSelect');
+        
+        try {
+            status.textContent = 'Loading calendars...';
+            
+            const response = await axios.get('/calendar/api/calendars');
+            
+            if (response.data.success) {
+                status.textContent = 'Calendars loaded! Count: ' + response.data.calendars.length;
+                
+                // Populate dropdown
+                select.innerHTML = '<option value="">Select calendar</option>';
+                response.data.calendars.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.unique_id;
+                    const typeLabel = item.type === 'calendar' ? '📅' : '👥';
+                    option.textContent = `${typeLabel} ${item.name}`;
+                    select.appendChild(option);
+                });
+                
+            } else {
+                status.textContent = 'Calendar API failed: ' + response.data.message;
+            }
+        } catch (error) {
+            status.textContent = 'Calendar Error: ' + error.message;
+            if (error.response) {
+                status.textContent += ' - ' + JSON.stringify(error.response.data);
+            }
+        }
+    }
+    </script>
+</body>
+</html>

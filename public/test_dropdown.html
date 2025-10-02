@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Calendar Dropdown</title>
+</head>
+<body>
+    <h1>Test Calendar API & Dropdown</h1>
+    <div id="status">Testing...</div>
+    
+    <label for="testCalendar">Seleccionar calendario:</label>
+    <select id="testCalendar">
+        <option value="">Cargando...</option>
+    </select>
+    
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+    axios.defaults.withCredentials = true;
+    
+    async function testCalendarDropdown() {
+        const status = document.getElementById('status');
+        const select = document.getElementById('testCalendar');
+        
+        try {
+            // First login
+            status.innerHTML = 'Logging in...';
+            
+            const loginResponse = await axios.post('/calendar/api/auth/login', {
+                email: 'admin@admin.com',
+                password: 'passwd12345@'
+            });
+            
+            if (loginResponse.data.success) {
+                status.innerHTML = 'Login successful, loading calendars...';
+                
+                // Test calendar API
+                const calendarResponse = await axios.get('/calendar/api/calendars');
+                
+                if (calendarResponse.data.success) {
+                    status.innerHTML = `Found ${calendarResponse.data.calendars.length} items`;
+                    
+                    // Populate dropdown
+                    select.innerHTML = '<option value="">Seleccionar calendario</option>';
+                    calendarResponse.data.calendars.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.unique_id;
+                        const typeLabel = item.type === 'calendar' ? '📅' : '👥';
+                        const permissionLabel = item.permission_level === 'owner' ? ' (Propietario)' : ' (Acceso)';
+                        option.textContent = `${typeLabel} ${item.name}${permissionLabel}`;
+                        if (item.color) option.style.color = item.color;
+                        select.appendChild(option);
+                    });
+                    
+                    status.innerHTML += '<br><pre>' + JSON.stringify(calendarResponse.data, null, 2) + '</pre>';
+                } else {
+                    status.innerHTML = 'Calendar API error: ' + JSON.stringify(calendarResponse.data);
+                }
+            } else {
+                status.innerHTML = 'Login failed: ' + JSON.stringify(loginResponse.data);
+            }
+        } catch (error) {
+            status.innerHTML = 'Error: ' + error.message + '<br>' + 
+                (error.response ? JSON.stringify(error.response.data) : '');
+        }
+    }
+    
+    // Run test when page loads
+    testCalendarDropdown();
+    </script>
+</body>
+</html>

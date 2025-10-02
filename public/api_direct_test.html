@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Direct Test</title>
+</head>
+<body>
+    <h2>API Direct Test</h2>
+    <div id="results"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+    axios.defaults.withCredentials = true;
+    
+    const results = document.getElementById('results');
+    
+    async function testAPI() {
+        results.innerHTML = '<h3>Testing API Endpoints...</h3>';
+        
+        // Test 1: Login
+        try {
+            results.innerHTML += '<p><strong>1. Testing Login...</strong></p>';
+            
+            const loginResponse = await axios.post('/calendar/api/auth/login', {
+                email: 'admin@calendario.local',
+                password: 'passwd12345@'
+            });
+            
+            results.innerHTML += `<p>✓ Login: ${JSON.stringify(loginResponse.data)}</p>`;
+            
+            // Test 2: Calendar API
+            try {
+                results.innerHTML += '<p><strong>2. Testing Calendar API...</strong></p>';
+                
+                const calendarResponse = await axios.get('/calendar/api/calendars');
+                results.innerHTML += `<p>✓ Calendars: ${JSON.stringify(calendarResponse.data)}</p>`;
+                
+            } catch (calError) {
+                results.innerHTML += `<p>✗ Calendar Error: ${calError.message}<br>`;
+                if (calError.response) {
+                    results.innerHTML += `Status: ${calError.response.status}<br>`;
+                    results.innerHTML += `Data: ${JSON.stringify(calError.response.data)}<br>`;
+                    results.innerHTML += `URL: ${calError.config.url}</p>`;
+                } else {
+                    results.innerHTML += `Full error: ${JSON.stringify(calError)}</p>`;
+                }
+            }
+            
+        } catch (loginError) {
+            results.innerHTML += `<p>✗ Login Error: ${loginError.message}<br>`;
+            if (loginError.response) {
+                results.innerHTML += `Status: ${loginError.response.status}<br>`;
+                results.innerHTML += `Data: ${JSON.stringify(loginError.response.data)}</p>`;
+            } else {
+                results.innerHTML += `Full error: ${JSON.stringify(loginError)}</p>`;
+            }
+        }
+    }
+    
+    // Run test immediately
+    testAPI();
+    </script>
+</body>
+</html>

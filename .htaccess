@@ -1,0 +1,7 @@
+RewriteEngine On
+
+# Excluir rutas API - deben ser manejadas directamente por api/index.php
+RewriteCond %{REQUEST_URI} !^/calendar/api/
+
+# Redirigir todo lo demás a public/
+RewriteRule ^(.*)$ public/$1 [QSA,L]
