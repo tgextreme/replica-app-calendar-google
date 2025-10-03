@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Groups API</title>
+</head>
+<body>
+    <h2>Test Groups API Debug</h2>
+    <div id="status">Ready...</div>
+    
+    <button onclick="testLogin('admin@calendario.local', 'passwd12345@')">Login Admin</button>
+    <button onclick="testLogin('jose@calendario.local', 'password')">Login José</button>
+    <button onclick="testLogin('maria@calendario.local', 'passwd12345@')">Login María</button>
+    <br><br>
+    <button onclick="testGroups()">Test Groups</button>
+    <button onclick="clearSession()">Clear Session</button>
+    
+    <div id="results"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+    axios.defaults.withCredentials = true;
+    
+    async function testLogin(email, password) {
+        const status = document.getElementById('status');
+        
+        try {
+            status.textContent = `Logging in as ${email}...`;
+            
+            const response = await axios.post('/calendar/api/auth/login', {
+                email: email,
+                password: password
+            });
+            
+            if (response.data.success) {
+                status.textContent = `✅ Login successful: ${response.data.user.full_name}`;
+                console.log('Login response:', response.data);
+            } else {
+                status.textContent = `❌ Login failed: ${response.data.message}`;
+            }
+        } catch (error) {
+            status.textContent = `❌ Error: ${error.message}`;
+            console.error('Login error:', error);
+            if (error.response) {
+                console.error('Error response:', error.response.data);
+            }
+        }
+    }
+    
+    async function testGroups() {
+        const status = document.getElementById('status');
+        const results = document.getElementById('results');
+        
+        try {
+            status.textContent = 'Loading groups...';
+            
+            const response = await axios.get('/calendar/api/groups');
+            
+            if (response.data.success) {
+                status.textContent = `✅ Groups loaded: ${response.data.groups.length} groups found`;
+                results.innerHTML = `<pre>${JSON.stringify(response.data, null, 2)}</pre>`;
+                console.log('Groups response:', response.data);
+            } else {
+                status.textContent = `❌ Groups failed: ${response.data.message}`;
+                results.innerHTML = `<pre>Error: ${JSON.stringify(response.data, null, 2)}</pre>`;
+            }
+        } catch (error) {
+            status.textContent = `❌ Groups Error: ${error.message}`;
+            results.innerHTML = `<pre>Error: ${error.message}</pre>`;
+            console.error('Groups error:', error);
+            if (error.response) {
+                console.error('Groups error response:', error.response.data);
+                results.innerHTML += `<pre>Response: ${JSON.stringify(error.response.data, null, 2)}</pre>`;
+            }
+        }
+    }
+    
+    async function clearSession() {
+        try {
+            await axios.post('/calendar/api/auth/logout');
+            document.getElementById('status').textContent = 'Session cleared';
+            document.getElementById('results').innerHTML = '';
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
+    }
+    </script>
+</body>
+</html>

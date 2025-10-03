@@ -1,9 +1,12 @@
 // Groups.js - Gestión de grupos de usuarios
 class GroupsManager {
     constructor() {
+        console.log('GroupsManager: Initializing...');
         this.currentGroupId = null;
         this.groups = [];
+        this.isAdmin = false;
         this.initializeEventListeners();
+        console.log('GroupsManager: Initialized successfully');
     }
 
     initializeEventListeners() {
@@ -34,27 +37,73 @@ class GroupsManager {
     }
 
     async openGroupsModal() {
+        console.log('GroupsManager: Opening groups modal...');
         const modal = new bootstrap.Modal(document.getElementById('groupsModal'));
         modal.show();
         
         // Cargar grupos del usuario
+        console.log('GroupsManager: Loading groups for modal...');
         await this.loadUserGroups();
         this.showEmptyState();
     }
 
     async loadUserGroups() {
         try {
-            const response = await axios.get('/calendar/api/group');
+            console.log('GroupsManager: Loading user groups...');
+            console.log('GroupsManager: Making request to:', '/calendar/api/groups');
+            console.log('GroupsManager: Axios defaults:', {
+                withCredentials: axios.defaults.withCredentials,
+                baseURL: axios.defaults.baseURL,
+                headers: axios.defaults.headers
+            });
+            
+            const response = await axios.get('/calendar/api/groups');
+            console.log('GroupsManager: Groups API response:', response.data);
+            console.log('GroupsManager: Response status:', response.status);
             
             if (response.data.success) {
                 this.groups = response.data.groups;
+                this.isAdmin = response.data.isAdmin || false;
+                console.log('GroupsManager: Loaded groups:', this.groups);
+                console.log('GroupsManager: User is admin:', this.isAdmin);
                 this.renderGroupsList();
+                this.updateUIForRole();
             } else {
-                this.showAlert('danger', 'Error al cargar grupos');
+                console.error('GroupsManager: API returned error:', response.data.message);
+                this.showAlert('danger', 'Error al cargar grupos: ' + response.data.message);
             }
         } catch (error) {
-            console.error('Error al cargar grupos:', error);
-            this.showAlert('danger', 'Error al cargar grupos');
+            console.error('GroupsManager: Exception loading groups:', error);
+            console.error('GroupsManager: Error config:', error.config);
+            console.error('GroupsManager: Error request:', error.request);
+            
+            if (error.response) {
+                console.error('GroupsManager: Error response status:', error.response.status);
+                console.error('GroupsManager: Error response headers:', error.response.headers);
+                console.error('GroupsManager: Error response data:', error.response.data);
+                console.error('GroupsManager: Error response URL:', error.response.config?.url);
+                
+                const errorMsg = error.response.data?.message || error.response.statusText || 'Error desconocido';
+                this.showAlert('danger', `Error al cargar grupos (${error.response.status}): ${errorMsg}`);
+            } else if (error.request) {
+                console.error('GroupsManager: Request was made but no response:', error.request);
+                this.showAlert('danger', 'Error de red al cargar grupos: No se recibió respuesta del servidor');
+            } else {
+                console.error('GroupsManager: Error setting up request:', error.message);
+                this.showAlert('danger', 'Error al cargar grupos: ' + error.message);
+            }
+        }
+    }
+
+    updateUIForRole() {
+        const createBtn = document.getElementById('createGroupBtn');
+        if (createBtn) {
+            if (this.isAdmin) {
+                createBtn.style.display = 'block';
+                createBtn.title = 'Crear nuevo grupo';
+            } else {
+                createBtn.style.display = 'none';
+            }
         }
     }
 
@@ -62,10 +111,14 @@ class GroupsManager {
         const container = document.getElementById('groupsList');
         
         if (this.groups.length === 0) {
+            const noGroupsMsg = this.isAdmin ? 
+                'No hay grupos creados aún' : 
+                'No perteneces a ningún grupo';
+            
             container.innerHTML = `
                 <div class="text-center py-3 text-muted">
                     <i class="bi bi-people"></i><br>
-                    <small>No tienes grupos aún</small>
+                    <small>${noGroupsMsg}</small>
                 </div>
             `;
             return;
@@ -123,9 +176,11 @@ class GroupsManager {
         
         document.getElementById('selectedGroupMembers').textContent = `${group.member_count} miembro(s) - Creado por ${group.created_by_name}`;
 
-        // Mostrar/ocultar botón añadir miembro según permisos
+        // Mostrar/ocultar botones según permisos (solo admins globales)
         const addBtn = document.getElementById('addMemberBtn');
-        addBtn.style.display = ['admin', 'moderator'].includes(group.role) ? 'block' : 'none';
+        if (addBtn) {
+            addBtn.style.display = this.isAdmin ? 'block' : 'none';
+        }
     }
 
     showEmptyState() {
@@ -135,10 +190,10 @@ class GroupsManager {
 
     async loadGroupMembers(groupId) {
         try {
-            const response = await axios.get(`/calendar/api/group/members?group_id=${groupId}`);
+            const response = await axios.get(`/calendar/api/groups/${groupId}`);
             
             if (response.data.success) {
-                this.renderGroupMembers(response.data.members);
+                this.renderGroupMembers(response.data.group.members);
             }
         } catch (error) {
             console.error('Error al cargar miembros:', error);
@@ -147,6 +202,21 @@ class GroupsManager {
 
     renderGroupMembers(members) {
         const tbody = document.getElementById('groupMembersTable');
+        const membersSection = document.querySelector('.members-section');
+        
+        if (!this.isAdmin) {
+            // Los usuarios normales no ven la lista de miembros
+            if (membersSection) {
+                membersSection.style.display = 'none';
+            }
+            return;
+        }
+        
+        // Solo los admins ven los miembros
+        if (membersSection) {
+            membersSection.style.display = 'block';
+        }
+        
         const currentGroup = this.groups.find(g => g.id == this.currentGroupId);
         
         tbody.innerHTML = members.map(member => `
@@ -243,7 +313,7 @@ class GroupsManager {
         }
 
         try {
-            const response = await axios.post('/calendar/api/group', groupData);
+            const response = await axios.post('/calendar/api/groups', groupData);
             
             if (response.data.success) {
                 this.showAlert('success', 'Grupo creado correctamente');
@@ -287,7 +357,7 @@ class GroupsManager {
         };
 
         try {
-            const response = await axios.post('/calendar/api/group/members', memberData);
+            const response = await axios.post(`/calendar/api/groups/${this.currentGroupId}/members`, memberData);
             
             if (response.data.success) {
                 this.showAlert('success', 'Miembro añadido correctamente');
@@ -310,9 +380,7 @@ class GroupsManager {
         
         if (confirm(`¿Cambiar rol a "${nextRole}"?`)) {
             try {
-                const response = await axios.put('/calendar/api/group/members', {
-                    group_id: this.currentGroupId,
-                    member_id: memberId,
+                const response = await axios.put(`/calendar/api/groups/${this.currentGroupId}/members/${memberId}`, {
                     role: nextRole
                 });
                 
@@ -329,12 +397,7 @@ class GroupsManager {
     async removeMember(memberId, memberName) {
         if (confirm(`¿Eliminar a "${memberName}" del grupo?`)) {
             try {
-                const response = await axios.delete('/calendar/api/group/members', {
-                    data: {
-                        group_id: this.currentGroupId,
-                        member_id: memberId
-                    }
-                });
+                const response = await axios.delete(`/calendar/api/groups/${this.currentGroupId}/members/${memberId}`);
                 
                 if (response.data.success) {
                     this.showAlert('success', 'Miembro eliminado del grupo');
@@ -437,29 +500,51 @@ class GroupsManager {
     }
 
     async searchUsers(query) {
-        if (!this.currentGroupId) return;
+        if (!this.currentGroupId) {
+            console.log('GroupsManager: No currentGroupId set for search');
+            return;
+        }
 
         try {
-            const response = await axios.get(`/calendar/api/group/search?q=${encodeURIComponent(query)}&group_id=${this.currentGroupId}`);
+            const url = `/calendar/api/groups/search?q=${encodeURIComponent(query)}&group_id=${this.currentGroupId}`;
+            console.log('GroupsManager: Searching users with URL:', url);
+            
+            const response = await axios.get(url);
+            console.log('GroupsManager: User search response:', response.data);
             
             if (response.data.success) {
+                console.log('GroupsManager: Found users:', response.data.users);
                 this.displayUserSearchResults(response.data.users);
+            } else {
+                console.error('GroupsManager: User search failed:', response.data.message);
             }
         } catch (error) {
-            console.error('Error searching users:', error);
+            console.error('GroupsManager: Error searching users:', error);
+            if (error.response) {
+                console.error('GroupsManager: Search error response:', error.response.data);
+            }
         }
     }
 
     displayUserSearchResults(users) {
+        console.log('GroupsManager: Displaying user search results:', users);
         const resultsContainer = document.getElementById('userSearchResults');
+        
+        if (!resultsContainer) {
+            console.error('GroupsManager: userSearchResults container not found');
+            return;
+        }
+        
         resultsContainer.innerHTML = '';
 
         if (users.length === 0) {
+            console.log('GroupsManager: No users found');
             resultsContainer.innerHTML = '<div class="p-3 text-muted">No se encontraron usuarios</div>';
             resultsContainer.classList.add('show');
             return;
         }
 
+        console.log('GroupsManager: Creating user items for', users.length, 'users');
         users.forEach(user => {
             const initials = this.getInitials(user.full_name);
             const item = document.createElement('div');

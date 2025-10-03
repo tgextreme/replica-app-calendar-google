@@ -14,13 +14,15 @@ class GroupController {
         $this->authController->requireAuth();
 
         $userId = $this->authController->getCurrentUserId();
+        $isAdmin = $this->authController->isAdmin();
 
         try {
             $groups = $this->groupModel->getUserGroups($userId);
 
             echo json_encode([
                 'success' => true,
-                'groups' => $groups
+                'groups' => $groups,
+                'isAdmin' => $isAdmin
             ]);
         } catch (Exception $e) {
             http_response_code(500);
@@ -30,7 +32,7 @@ class GroupController {
 
     public function create() {
         header('Content-Type: application/json');
-        $this->authController->requireAuth();
+        $this->authController->requireAdmin(); // Solo admins pueden crear grupos
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
@@ -87,11 +89,21 @@ class GroupController {
             $group = $this->groupModel->findById($id);
 
             if ($group) {
-                $members = $this->groupModel->getGroupMembers($id);
-                $calendars = $this->groupModel->getGroupCalendars($id);
+                $isAdmin = $this->authController->isAdmin();
                 
-                $group['members'] = $members;
-                $group['calendars'] = $calendars;
+                // Solo los admins pueden ver miembros y calendarios
+                if ($isAdmin) {
+                    $members = $this->groupModel->getGroupMembers($id);
+                    $calendars = $this->groupModel->getGroupCalendars($id);
+                    $group['members'] = $members;
+                    $group['calendars'] = $calendars;
+                } else {
+                    // Los usuarios normales solo ven información básica del grupo
+                    $group['members'] = [];
+                    $group['calendars'] = [];
+                }
+                
+                $group['isAdmin'] = $isAdmin;
 
                 echo json_encode([
                     'success' => true,
@@ -274,25 +286,27 @@ class GroupController {
 
     public function search() {
         header('Content-Type: application/json');
-        $this->authController->requireAuth();
+        $this->authController->requireAdmin(); // Solo admins pueden buscar usuarios
 
         $searchTerm = $_GET['q'] ?? '';
+        $groupId = intval($_GET['group_id'] ?? 0);
         $limit = intval($_GET['limit'] ?? 10);
 
         try {
-            if (!empty($searchTerm)) {
-                $groups = $this->groupModel->searchGroups($searchTerm, $limit);
+            if (!empty($searchTerm) && $groupId > 0) {
+                // Buscar usuarios que NO son miembros del grupo
+                $users = $this->groupModel->searchAvailableUsers($searchTerm, $groupId, $limit);
             } else {
-                $groups = $this->groupModel->getPublicGroups($limit);
+                $users = [];
             }
 
             echo json_encode([
                 'success' => true,
-                'groups' => $groups
+                'users' => $users
             ]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Error al buscar grupos']);
+            echo json_encode(['success' => false, 'message' => 'Error al buscar usuarios']);
         }
     }
 

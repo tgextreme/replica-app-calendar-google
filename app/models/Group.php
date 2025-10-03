@@ -245,4 +245,31 @@ class Group {
                 
         return $this->db->fetchAll($sql, [$groupId]);
     }
+
+    public function searchAvailableUsers($searchTerm, $groupId, $limit = 10) {
+        $sql = "SELECT u.id, u.username, u.full_name, u.email, u.avatar_url
+                FROM users u
+                WHERE u.is_active = 1 
+                AND u.id NOT IN (
+                    SELECT gm.user_id 
+                    FROM group_members gm 
+                    WHERE gm.group_id = ?
+                )
+                AND (
+                    u.full_name LIKE ? OR 
+                    u.username LIKE ? OR 
+                    u.email LIKE ?
+                )
+                ORDER BY u.full_name
+                LIMIT ?";
+        
+        $searchPattern = "%{$searchTerm}%";
+        return $this->db->fetchAll($sql, [
+            $groupId, 
+            $searchPattern, 
+            $searchPattern, 
+            $searchPattern, 
+            $limit
+        ]);
+    }
 }

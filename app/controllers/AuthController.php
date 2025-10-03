@@ -37,6 +37,7 @@ class AuthController {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_email'] = $user['email'];
             $_SESSION['user_name'] = $user['full_name'];
+            $_SESSION['user_role'] = $user['role'];
             $_SESSION['login_time'] = time();
             
             $this->userModel->updateLastActivity($user['id']);
@@ -49,7 +50,8 @@ class AuthController {
                     'username' => $user['username'],
                     'email' => $user['email'],
                     'full_name' => $user['full_name'],
-                    'timezone' => $user['timezone']
+                    'timezone' => $user['timezone'],
+                    'role' => $user['role']
                 ]
             ]);
         } else {
@@ -148,7 +150,8 @@ class AuthController {
                     'username' => $user['username'],
                     'email' => $user['email'],
                     'full_name' => $user['full_name'],
-                    'timezone' => $user['timezone']
+                    'timezone' => $user['timezone'],
+                    'role' => $user['role']
                 ]
             ]);
         } else {
@@ -173,5 +176,22 @@ class AuthController {
 
     public function getCurrentUserId() {
         return $_SESSION['user_id'] ?? null;
+    }
+
+    public function getCurrentUserRole() {
+        return $_SESSION['user_role'] ?? 'user';
+    }
+
+    public function isAdmin() {
+        return $this->getCurrentUserRole() === 'admin';
+    }
+
+    public function requireAdmin() {
+        $this->requireAuth();
+        if (!$this->isAdmin()) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Permisos de administrador requeridos']);
+            exit;
+        }
     }
 }
